@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<script>/* Supabase 設定：url 和 anon key 可以公開，資料由登入與資料列權限保護 */
+window.SUPA_CFG={url:'',key:''};</script>
 <title>客服看板</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1214,7 +1216,48 @@ async function useLocal(why){clearTimeout(window.__dbTimer);localMode=true;canWr
   else if(!db.count('cases')&&db.count('machines')&&db.allDemo('machines')){for(const x of demoData(new Date()).cases)await db.doc('cases/'+x.id).set(strip(x))}
   setStatus(why+(db.persist()?'目前用「本機模式」：資料存在這台電腦的瀏覽器，重新整理不會不見，但不會同步給同事。':'目前用「暫存模式」：這個瀏覽器不允許存檔，關掉頁面後修改會消失。'));
   listen()}
+/* ---------- Supabase 雲端資料庫（GitHub 網站版專用）：登入後資料存在自己的 Supabase，手機電腦同步 ---------- */
+function loadSupaLib(){if(window.supabase)return Promise.resolve();
+  const u=['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js','https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'];
+  return new Promise((ok,bad)=>{let i=0;const next=()=>{if(i>=u.length)return bad(new Error('資料庫元件載入失敗'));const s=document.createElement('script');s.src=u[i++];s.onload=()=>window.supabase?ok():next();s.onerror=next;document.head.appendChild(s)};next()})}
+function supaDb(sb,uid){const data={},subs={},loaded={};COLS.forEach(c=>data[c]={});
+  const snap=c=>({metadata:{fromCache:false},docs:Object.entries(data[c]).map(([id,v])=>({id,data:()=>JSON.parse(JSON.stringify(v))}))});
+  const emit=c=>(subs[c]||[]).forEach(fn=>fn(snap(c)));
+  sb.channel('docs-'+uid).on('postgres_changes',{event:'*',schema:'public',table:'docs'},p=>{
+    if(p.eventType==='DELETE'){const o=p.old||{};if(o.col&&data[o.col]&&o.id in data[o.col]){delete data[o.col][o.id];emit(o.col)}return}
+    const n=p.new||{};if(n.owner!==uid||!data[n.col])return;data[n.col][n.id]=n.data;emit(n.col)}).subscribe();
+  const load=async(c,err)=>{const{data:rows,error}=await sb.from('docs').select('id,data').eq('owner',uid).eq('col',c);
+    if(error){err&&err(error);return}data[c]={};for(const r of rows)data[c][r.id]=r.data;loaded[c]=true;emit(c)};
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')COLS.forEach(c=>load(c))});
+  return{doc(path){const[c,id]=path.split('/');return{
+      set:async v=>{const d=JSON.parse(JSON.stringify(v));const{error}=await sb.from('docs').upsert({owner:uid,col:c,id,data:d,updated_at:new Date().toISOString()});if(error)throw error;data[c][id]=d;emit(c)},
+      delete:async()=>{const{error}=await sb.from('docs').delete().eq('owner',uid).eq('col',c).eq('id',id);if(error)throw error;delete data[c][id];emit(c)}}},
+    collection(c){return{onSnapshot(fn,err){(subs[c]=subs[c]||[]).push(fn);load(c,err);return()=>{subs[c]=subs[c].filter(x=>x!==fn)}}}}}}
+function supaLogin(sb){return new Promise(done=>{
+  const m=modal(`<h2>登入 SMT 客服看板</h2><p class="note">資料存在你自己的雲端資料庫，登入後手機和電腦會同步。第一次用請按「建立帳號」。</p>
+  <label>Email<input id="sp_mail" type="email" autocomplete="username" style="width:100%"></label>
+  <label>密碼（至少 6 碼）<input id="sp_pw" type="password" autocomplete="current-password" style="width:100%"></label>
+  <p class="note" id="sp_msg" style="color:#B91C1C"></p>
+  <div class="row"><button id="sp_new">建立帳號</button><div class="actions"><button class="primary" id="sp_go">登入</button></div></div>`);
+  const msg=t=>{$('#sp_msg').textContent=t};const val=()=>[$('#sp_mail').value.trim(),$('#sp_pw').value];
+  $('#sp_go').onclick=async()=>{const[e,p]=val();if(!e||!p)return msg('請輸入 Email 和密碼');msg('登入中…');
+    const{data,error}=await sb.auth.signInWithPassword({email:e,password:p});if(error)return msg(/confirm/i.test(error.message)?'請先到信箱按確認連結，再回來登入':'登入失敗：'+error.message);closeModal();done(data.user)};
+  $('#sp_new').onclick=async()=>{const[e,p]=val();if(!e||p.length<6)return msg('請輸入 Email 和至少 6 碼密碼');msg('建立中…');
+    const{data,error}=await sb.auth.signUp({email:e,password:p,options:{emailRedirectTo:location.origin+location.pathname}});if(error)return msg('建立失敗：'+error.message);
+    if(data.session){closeModal();done(data.user)}else msg('已寄確認信到 '+e+'，按信裡的連結後回到這頁登入')};
+  $('#sp_pw').addEventListener('keydown',ev=>{if(ev.key==='Enter')$('#sp_go').click()})})}
+async function useSupa(){try{await loadSupaLib()}catch(e){await useLocal('雲端資料庫元件載入失敗。');return}
+  const sb=supabase.createClient(SUPA_CFG.url,SUPA_CFG.key);
+  let{data:{session}}=await sb.auth.getSession();let user=session&&session.user;
+  if(!user){setStatus('請先登入');user=await supaLogin(sb)}
+  localMode=false;canWrite=true;db=supaDb(sb,user.id);
+  const demo=$('#btnDemo');if(demo)demo.hidden=true;
+  const out=document.createElement('button');out.setAttribute('role','menuitem');out.textContent='登出（'+user.email+'）';
+  out.onclick=async()=>{await sb.auth.signOut();location.reload()};demo.parentNode.insertBefore(out,demo);
+  setStatus('已連線雲端資料庫');listen()}
+
 (async()=>{
+  if(window.SUPA_CFG&&SUPA_CFG.url){await useSupa();return}
   if(!window.claude||!claude.use){await useLocal('沒有連到 claude.ai 線上資料庫。');return}
   window.__dbTimer=setTimeout(()=>setStatus('資料庫連線較慢，請稍候…'),10000);
   claude.use('user').then(async u=>{if(!u)return;const w=await u.can('data.write');if(w===false&&!localMode){canWrite=false;setStatus('檢視模式：你可以查看，但沒有修改權限。')}}).catch(()=>{});
