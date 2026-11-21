@@ -1147,15 +1147,17 @@ function demoData(base){
     P('p04',-35,'m14',null,'SP-BT-020','傳動皮帶',2,'定期保養更換','收費'),
     P('p05',-50,'m03','i02','SP-AR-002','AR 噴頭',1,'受力不均導致錫膏溢出','保固內')];
   const C=(id,no,model,alarm,symptom,cause,steps,partsUsed,tags,iid,author,date)=>({id,no,model,alarm,symptom,cause,steps,parts:partsUsed,tags,issueId:iid,machineId:iid?(issues.find(i=>i.id===iid)||{}).machineId:null,author,date:D(date),demo:true});
+  /* 維修經驗庫：取自原廠技術群組的真實維修對話（7–11 月），已去識別化（客戶、人名、序號改代號） */
   const cases=[
-    C('c01',1,'MY700','','AR 噴頭故障','噴頭受力不均，錫膏從側邊溢出',['拆下噴頭檢查噴嘴與密封面','確認受力不均、需更換','更換 AR 噴頭','調整壓力參數後試噴','連續生產觀察 1 天'],'AR 噴頭 ×1',['噴頭','溢錫','壓力'],'i02','工程師A',-50),
-    C('c02',2,'MY700','','控制板故障','CB 控制板異常',['確認電源與排線正常，排除接觸不良','判定 CB 板故障，向原廠下單','到貨後更換 CB 板','連續生產測試'],'CB 控制板 ×1',['控制板','CB','無法啟動'],'i01','工程師C',-20),
-    C('c03',3,'MY300','','異常定位','定位板受潮，影像辨識不穩',['檢查定位板表面與周圍濕度','燈光調亮至 60%','觀察 3 天，再發生則更換定位板'],'',['定位','受潮','燈光'],'i03','工程師C',-8),
-    C('c04',4,'MY700','','噴射量不穩','錫膏回溫不足，黏度偏高',['確認錫膏回溫時間與批次','更換已完整回溫的錫膏','執行噴頭清潔程序','重新校正噴射量','連續試噴確認穩定'],'',['噴射量','錫膏','黏度','回溫'],null,'工程師A',-40),
-    C('c05',5,'AOI','','誤判率升高','光源亮度衰減',['量測光源亮度並與出廠值比對','先調整判定參數暫時改善','亮度低於標準則更換燈管','以標準板驗證誤判率'],'光源燈管 ×1',['誤判','光源','亮度'],null,'工程師B',-30),
-    C('c06',6,'Tower','料架感測器異常','料架感測器誤報','感測器表面髒污或老化',['清潔感測器表面','檢查感測器接線與接頭','重開機確認是否仍誤報','仍誤報則更換感測器'],'料架感測器 ×1',['感測器','料架','誤報'],null,'工程師B',-60),
-    C('c07',7,'MY300','','左側打件偏移','pin 針歪斜',['檢查左側 pin 針是否歪斜或磨損','更換 pin 針','重新校正打件位置','試打確認'],'pin 針 ×2',['打件','偏移','pin 針'],null,'工程師C',-90),
-    C('c08',8,'MY700','','相機校正偏移','相機固定座鬆動',['檢查相機固定座螺絲','重新鎖固','執行相機校正程序','以校正片驗證'],'',['相機','校正','偏移'],null,'工程師A',-45)];
+    C('c01',1,'MY700','Error 255 when loading servo canic4（2800001）','新裝機／移機後開機 hardware initial 失敗','CAN 卡受潮（長途搬運、久未開機）',['開機後放著等半小時','關機','再開一次，確認 Hardware initial OK','若仍失敗，再依案例 #3 檢查 CB 板','提醒客戶：久未做年度 PM 的機台建議盡快排 PM'],'',['Error 255','canic4','CAN卡','受潮','移機','新裝機','hardware initial'],null,'工程師H',-130),
+    C('c02',2,'MY700','ERROR: start of JPSys failed（jpsys start returned code 1）','開機 JPSys 啟動失敗，卡在 configuring camera 之後','網路 DNS 設定問題，機台連不到設定的 DNS nameserver',['重插電腦 CAN 卡、用 netsetup 重設 IP 都無效時，往 DNS 查','先確認有沒有系統備份可回復','su root 切成 root','執行 netsetup，primary nameserver 欄位留空（或讓機台連得到 DNS 的 IP）','重開機確認 JPSys 正常啟動'],'',['JPSys','開機失敗','netsetup','DNS','nameserver','su root'],null,'工程師A',-96),
+    C('c03',3,'MY700','Error 255 when loading servo canic4（2800001）；Failed to initialize the system','初始化失敗，Conveyor 其中一塊 CB 板 CMOT5 指示燈不亮','CB 板本體故障（整塊對調後問題跟著板子走）',['點開錯誤視窗 Details 確認是 servo / CB 板問題','關機斷電，打開 Conveyor 下方黑色蓋子（CB 板左右各一塊），開機看指示燈','先只對調 CMOT5（銀色模組）：問題沒轉移','對調時依手冊 Figure 46 把旋鈕地址碼改成對應位置，確認接頭插好','整塊 CB 板對調（白色接頭先擰鬆固定螺絲，卡扣往兩邊撥開）','問題轉移 → 判定 CB 板故障並更換'],'4027503 PCBA CB WITH CMOT5 ×1',['CB板','CMOT5','不亮燈','紅燈','Error 255','canic4','地址碼','對調','控制板'],null,'工程師A',-96),
+    C('c04',4,'MY700','Error 211002052 Motor speed out of control；Current Z-axis position is above safety position','換 CB 板後進板報錯，前平台下不去','換板後程式的板子設定與機台狀態不一致',['板子先放出來','先載入其他程式','到「編輯」裡找回現在的程式，修改板子類型','重新進板確認'],'',['Motor speed out of control','Z軸','安全位置','進板報錯','平台下不去','板子類型','換程式'],null,'工程師A',-96),
+    C('c05',5,'MY700','Error 1100001 Mechanical stop；Error 24 nozzleOffset not valid；Pump motor current too high','料匣一裝上就報錯（移機後突然出現）','原廠判斷：Z 軸摩擦力過大、滑塊可能損壞；也可能噴頭曾被撞',['確認是否料匣一裝上就報錯','有 2 號頭的話改裝 2 號頭測試，排除 1 號頭撞傷','換另一個料匣測試','仍報 → 指向 Z 軸（裝料匣後面帶滑塊的單元）','依原廠建議更換料匣軟板與料匣馬達'],'料匣軟板、料匣馬達（建議）',['料匣','Mechanical stop','Pump motor current too high','Z軸','滑塊','撞頭','移機','Error 24'],null,'工程師A',-128),
+    C('c06',6,'MY700','Failed to bring up eth0；Link detected: no','移機換網路插孔後改 IP，網路連不上','網卡沒有連線；原廠判斷可能是主板或系統',['主畫面按 Alt+F3（筆電 Fn+Alt+F3）開終端機','ifconfig 查目前 IP','netsetup → Netsetup → Static → 輸入新 IP → OK','開機「Waiting up to 10 more seconds for network configuration」是正常的','Code 電腦 TransferTool 設定檔改成新 IP','ethtool eth0 看 Link detected；為 no 且網路線確定插好 → 依原廠建議用升級用的 iso 重裝系統'],'',['改IP','網路','netsetup','ifconfig','ethtool','eth0','Alt+F3','TransferTool','重裝系統'],null,'工程師A',-129),
+    C('c07',7,'MY700','錯誤 2400001 軌跡規劃錯誤（Ordered target speed is larger than the allowed speed）','Z 量測完成後報錯，噴不到板子上（picoshot 噴頭）','offline cassette model 的 frequency 設定過高',['同一噴頭在 demo 板噴正常 → 排除噴頭與機台','只有這個程式報錯 → 查程式／cassette model','把 offline cassette model 的 frequency 調低（改 240 可正常噴印；原廠另建議可試 180）','重新產生程式後試噴'],'',['軌跡規劃錯誤','2400001','trajectory','frequency','頻率','cassette model','噴印','噴射'],null,'工程師H',-123),
+    C('c08',8,'MY700','JMC：找不到 database','JMC 開啟報錯，找不到資料庫','原廠判斷：資料庫路徑或資料遺失',['先用 offline computer 的 backup HDD 回復','不行再依原廠建議重新安裝 JPI'],'',['JMC','database','資料庫','JPI','backup','offline computer'],null,'工程師H',-124),
+    C('c09',9,'MY300','E-OPTCENT-79 Failed to locate HYDRA tool reference marks','MY300 無法定位，打件中止','原廠判斷：相機視野被遮擋或 HYDRA 頭參考板異常',['檢查相機有沒有異物遮擋並清潔','確認 Tool / 吸嘴安裝狀態','仍無法定位 → 依原廠建議更換 HYDRA 頭參考板'],'',['定位','無法定位','HYDRA','reference marks','相機','異物','MY300'],null,'工程師A',-17)];
   return {machines,issues,todos,parts,cases};
 }
 /* AI 快速建單的 Demo 範例訊息（虛構，對應上面的範例機台） */
@@ -1163,12 +1165,13 @@ const DEMO_MD=n=>{const x=new Date();x.setDate(x.getDate()+n);return `${x.getMon
 const DEMO_SAMPLES=[
   {label:'LINE：噴射量不穩',text:()=>`【LINE】客戶D 工程師G：\n早安，我們 MY700-#7 這兩天噴錫量又忽大忽小，換了新的一批錫膏還是一樣，產線很急，麻煩 ${DEMO_MD(3)} 前派人來看一下，謝謝！`},
   {label:'Email：AOI 誤判',text:()=>`【Email】主旨：AOI 誤判偏高\n您好，客戶A AOI-#2 本週誤判率從 2% 升到 6%，懷疑是光源老化，請協助安排檢查，希望 ${DEMO_MD(7)} 前有結果。`},
-  {label:'電話：Tower 停機',text:()=>`【電話紀錄】客戶E 來電：Tower-#5 下午停機，畫面顯示料架感測器異常，重開機無效，目前整台停線，請盡快處理。`}];
+  {label:'電話：Tower 停機',text:()=>`【電話紀錄】客戶E 來電：Tower-#5 下午停機，畫面顯示料架感測器異常，重開機無效，目前整台停線，請盡快處理。`},
+  {label:'LINE：開機 Error 255',text:()=>`【LINE】客戶B 工程師：\nMY700-#4 今天早上開機一直卡在初始化，畫面顯示 Error 255 when loading servo canic4，重開機也一樣，麻煩 ${DEMO_MD(1)} 前幫忙看一下，謝謝！`}];
 /*DEMO-END*/
 const COLS=['machines','issues','todos','parts','cases'];
 const listOf=c=>({machines,issues,todos,parts,cases})[c];
 $('#btnDemo').onclick=()=>{const m=modal(`<h2>Demo 重置</h2>
-  <p>一鍵把看板換成範例資料：16 台機台、9 筆 ISSUE（3 筆已結案、2 筆逾期、其餘處理中）、5 筆待辦、5 筆換 parts 紀錄、8 筆維修案例。日期以今天為準，所以任何一天 Demo 畫面都一樣完整。</p>
+  <p>一鍵把看板換成範例資料：16 台機台、9 筆 ISSUE（3 筆已結案、2 筆逾期、其餘處理中）、5 筆待辦、5 筆換 parts 紀錄、9 筆維修案例（取自真實維修紀錄，已去識別化）。日期以今天為準，所以任何一天 Demo 畫面都一樣完整。</p>
   <p class="note">範例資料全部為虛構，客戶、機台、人名都是代號。目前線上的 ${machines.length} 台機台、${issues.length} 筆 ISSUE、${todos.length} 筆待辦、${parts.length} 筆換 parts、${cases.length} 筆維修案例會被清空；需要的話先按「匯出 Excel」備份。</p>
   <div class="row"><span class="note" id="d_st"></span><div class="actions"><button id="d_cancel">取消</button><button class="primary" id="d_go">清空並載入範例資料</button></div></div>`);
   $('#d_cancel').onclick=closeModal;if(!canWrite)$('#d_go').disabled=true;
